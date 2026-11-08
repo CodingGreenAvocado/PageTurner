@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Auto Sheet Music Page Turner</title>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    color:white;
+    font-family:Arial,sans-serif;
+}
+
+#controls{
+    padding:10px;
+    background:#222;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+input, button{
+    padding:6px;
+}
+
+#viewer{
+    width:100vw;
+    height:calc(100vh - 70px);
+    overflow:auto;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    background:#000;
+}
+
+#sheet{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+}
+
+.horizontal #sheet{
+    max-width:none;
+    height:100%;
+}
+</style>
+</head>
+
+<body>
+
+<div id="controls">
+    <input type="file" id="files" multiple accept="image/*">
+
+    <label>BPM</label>
+    <input type="number" id="bpm" value="120">
+
+    <label>Time Sig.</label>
+    <input type="text" id="timesig" value="4/4">
+
+    <label>Measures/Page</label>
+    <input type="number" id="measures" value="16">
+
+    <button onclick="startAuto()">Start</button>
+    <button onclick="stopAuto()">Stop</button>
+
+    <button onclick="prevPage()">◀</button>
+    <button onclick="nextPage()">▶</button>
+
+    <button onclick="toggleHorizontal()">Horizontal</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
+
+    <span id="pageInfo">Page 0 / 0</span>
+</div>
+
+<div id="viewer">
+    <img id="sheet">
+</div>
+
+<script>
+let pages = [];
+let currentPage = 0;
+let timer = null;
+
+const sheet = document.getElementById("sheet");
+
+document.getElementById("files").addEventListener("change", e=>{
+    pages = [];
+
+    [...e.target.files].forEach(file=>{
+        const reader = new FileReader();
+
+        reader.onload = ev=>{
+            pages.push(ev.target.result);
+
+            if(pages.length === e.target.files.length){
+                showPage(0);
+            }
+        };
+
+        reader.readAsDataURL(file);
+    });
+});
+
+function showPage(index){
+    if(!pages.length) return;
+
+    currentPage = Math.max(0, Math.min(index, pages.length-1));
+
+    sheet.src = pages[currentPage];
+
+    document.getElementById("pageInfo").textContent =
+        `Page ${currentPage+1} / ${pages.length}`;
+}
+
+function nextPage(){
+    if(currentPage < pages.length - 1){
+        showPage(currentPage + 1);
+    }
+}
+
+function prevPage(){
+    if(currentPage > 0){
+        showPage(currentPage - 1);
+    }
+}
+
+function startAuto(){
+    stopAuto();
+
+    const bpm = parseFloat(document.getElementById("bpm").value);
+
+    const ts = document.getElementById("timesig").value.split("/");
+    const beatsPerMeasure = parseFloat(ts[0]);
+
+    const measures = parseFloat(
+        document.getElementById("measures").value
+    );
+
+    const secondsPerBeat = 60 / bpm;
+
+    const pageDuration =
+        beatsPerMeasure *
+        measures *
+        secondsPerBeat *
+        1000;
+
+    timer = setInterval(()=>{
+        if(currentPage < pages.length - 1){
+            nextPage();
+        }else{
+            stopAuto();
+        }
+    }, pageDuration);
+}
+
+function stopAuto(){
+    clearInterval(timer);
+}
+
+function toggleHorizontal(){
+    document.getElementById("viewer")
+        .classList.toggle("horizontal");
+}
+
+function toggleFullscreen(){
+    if(!document.fullscreenElement){
+        document.documentElement.requestFullscreen();
+    }else{
+        document.exitFullscreen();
+    }
+}
+</script>
+
+</body>
+</html>
